@@ -57,13 +57,26 @@ def filter_bandpass(trace, lowcut, highcut, fs, order=2):
 	trace_filtered = signal.filtfilt(b, a, trace, axis=0)
 	return trace_filtered
 
+def one_bit(trace):
+	trace_onebit = np.where(trace < 0, -1, trace)
+	trace_onebit = np.where(trace_onebit > 0, 1, trace_onebit)
+	return trace_onebit
+
 def make_date(traces):
-	date = UTCDateTime(str(traces[0].time.data))
-	year = str(date.year)
-	month = str(date.month).zfill(2)
-	day = str(date.day).zfill(2)
-	hour = str(date.hour).zfill(2)
-	minute = str(date.minute).zfill(2)
+	# date = UTCDateTime(traces['times'][0].values)
+	# year = str(date.year)
+	# month = str(date.month).zfill(2)
+	# day = str(date.day).zfill(2)
+	# hour = str(date.hour).zfill(2)
+	# minute = str(date.minute).zfill(2)
+
+	date = traces['times'][0].values
+	year = str(np.datetime64(date, 'Y'))
+	month = str(np.datetime64(date, 'M'))
+	day = str(np.datetime64(date, 'D'))
+	hour = str(np.datetime64(date, 'h'))
+	minute = str(np.datetime64(date, 'm'))
+
 	fdate = f'{year}{month}{day}_{hour}{minute}'
 	return fdate
 
@@ -114,23 +127,23 @@ def cross_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,st
 			elif start_position == 'mid_all':
 				ranges = np.arange(57, 430+1, 1)
 
-			for i in ranges:
+			for i_channel in ranges:
 			#for i in range(57,60): # use this when only interested in some channels
-				
-                # if onebit == True:
-				# 	x1 = one_bit(traces[time:time+int(window/dt),start])
-				# 	x2 = one_bit(traces[time:time+int(window/dt),i])
-				# else:
-				# 	x1 = traces[time:time+int(window/dt),start]
-				# 	x2 = traces[time:time+int(window/dt),i]
+			
+				if onebit == True:
+					x1 = one_bit(traces[time:time+int(window/dt),start])
+					x2 = one_bit(traces[time:time+int(window/dt),i_channel])
+				else:
+					x1 = traces[time:time+int(window/dt),start]
+					x2 = traces[time:time+int(window/dt),i_channel]
 				
 				if phase_cc == True:
 					try:
 						_t , pcc = pcc2(x1, x2, dt, -window, window)
 						cc[:,j] = cc[:,j] + pcc
 						
-						folder = f'Correlogram_{start}_{i}_phase/'
-						make_dir(traces, pcc, parent_dir, folder, stats, start, i, time, window)
+						folder = f'Correlogram_{start}_{i_channel}_phase/'
+						make_dir(traces, pcc, parent_dir, folder, stats, start, i_channel, time, window)
 							
 					except:
 						# print(len(corr),len(cc[:,j])) # show length
@@ -149,13 +162,14 @@ def cross_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,st
 						break
 
 				j = j + 1
-		time = int(time + lag/dt)
+		time = int(time + lag/dt) # here, time is an index, not a time value
 		iteration = iteration + 1
 	return cc, t
 
 # define function for auto correlation: one-bit cc, normal cc, and phase cc
 def auto_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,start_position,
 			onebit,phase_cc,decimate=1,resample=1):
+	
 	dt = traces['times'][1].item() - traces['times'][0].item()
 	dt = float(dt) * 1e-9
 	#dt = dt*resample
@@ -172,6 +186,7 @@ def auto_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,sta
 	stats.station = 'STRMBL'
 	stats.location = 'Italy'
 
+
 	while time < length:
 		if iteration%decimate == 0:
 			j = 0
@@ -187,35 +202,39 @@ def auto_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,sta
 			elif start_position == 'mid_all':
 				ranges = np.arange(57, 430+1, 1)
 
-			for i in ranges:
+			for i_channel in ranges:
 			#for i in range(57,60):
-				x1 = traces[time:time+int(window/dt),i]
-				
+		  
+				x1 = traces[time:time+int(window/dt),i_channel].values.ravel()
+				# attention à la gestion des channels (ajouter 1 ? enlever 1 ? à réfléchir)
+            
 				if phase_cc == True:
+
 					try:
 						_t , pcc = apcc2(x1, dt, -window, window)
 						cc[:,j] = cc[:,j] + pcc # linear stack
 						
-						folder = f'Correlogram_{start}_{i}_phase/'
-						make_dir(traces, pcc, parent_dir, folder, stats, start,i, time, window)
+						folder = f'Correlogram_{start}_{i_channel}_phase/'
+						make_dir(traces, pcc, parent_dir, folder, stats, start,i_channel, time, window)
 							
 					except:
 						# print(len(corr),len(cc[:,j])) # show length
 						print(f'Time window starting at {time*dt} s is shorter. Finishing the program ...')
 						break
+
 				else:
 					try: # to account for cutted trace in last time window
-						corr = signal.correlate(x1,x2)
+						corr = signal.correlate(x1,x1)
 						corr = np.append(corr,0) # pad with zero to similarize the array length
 						cc[:,j] = cc[:,j] + corr  
-						folder = f'Correlogram_{start}_{i}_normal/'
-						make_dir(traces, corr, parent_dir, folder, stats, start,i, time, window)
+						folder = f'Correlogram_{start}_{i_channel}_normal/'
+						make_dir(traces, corr, parent_dir, folder, stats, start,i_channel, time, window)
 					except:
 						# print(len(corr),len(cc[:,j])) # show length
 						print(f'Time window starting at {time*dt} s is shorter. Finishing the program ...')
 						break
 
 				j = j + 1
-		time = int(time + lag/dt)
+		time = int(time + lag/dt) # here, time is an index, not a time value
 		iteration = iteration + 1
 	return cc, t
