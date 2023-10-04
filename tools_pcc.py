@@ -92,10 +92,13 @@ def apcc2(x1, dt, lag0, lagu):
 
     # FFT, correlation and IFFT
 
+    #xa1 = np.fft.fft(xa1, 2*N)
     xa1 = np.fft.fft(xa1, Nz)
     amp = xa1 * np.conj(xa1)
+    #pcc = np.real( np.fft.ifft(amp, 2*N) ) / N
     pcc = np.real( np.fft.ifft(amp, Nz) ) / N
     pcc = np.fft.ifftshift(pcc)
+    #tt = N * dt
     tt  = Nz//2 * dt
     t   = np.arange(-tt, tt, dt)
 
