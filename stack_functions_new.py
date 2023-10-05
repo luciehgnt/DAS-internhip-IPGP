@@ -1,6 +1,4 @@
-import matplotlib.pylab as plt
 import numpy as np
-import xarray as xr
 from scipy import signal
 from tools_pcc import *
 import os
@@ -11,30 +9,6 @@ from obspy import read
 
 from xdas.io.febus import correct_gps_time
 from xdas.io.febus import read as read_das
-
-user = "mba"
-
-if user == "ipgp" :
-    path1 = "/home/invite/Documents/DAS-Lucie/fichiers-nc/"
-
-elif user == "mba" :
-    path1 = "/Volumes/DISKENOIR/fichiers-nc/"
-    path2 = "/Volumes/DISKENOIR/Correlograms/Cross-correlation"
-
-
-ds = xr.open_dataset(path1 + "SR_FEBUS_STROMBOLI_2022-09-18_17-35-44_UTC.nc")
-array=ds['strain_rates']
-channels_coord = ds['channels']
-sr_array_with_channels = xr.DataArray(
-    data=ds['strain_rates'],  # Remplacez par les données réelles de 'strain_rates'
-    dims=("times", "channels"),  # Spécifiez les dimensions
-    coords={"times": ds['strain_rates'].coords["times"], "channels": channels_coord},
-)
-
-iDas_nc = sr_array_with_channels
-Das_nc = sr_array_with_channels.coords
-
-dt = 0.02
 
 
 
@@ -81,6 +55,8 @@ def make_date(traces):
 	return fdate
 
 def make_dir(traces, pcc, parent_dir, folder, stats, start,i, time, window):
+	dt = traces['times'][1].item() - traces['times'][0].item()
+	dt = float(dt) * 1e-9
 	try:
 		os.mkdir(parent_dir + folder)
 	except:
@@ -112,20 +88,24 @@ def cross_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,st
 	stats.station = 'STRMBL'
 	stats.location = 'Italy'
 
+
+	# cross correlate all selected channel in time window
+	if start_position == 'mid':
+		ranges = np.arange(start-channel,start+channel+1,1)
+	elif start_position == 'early':
+		ranges = np.arange(start, start+channel+1, 1)
+	elif start_position == 'end':
+		ranges = np.arange(start, start-channel-1, -1)
+	elif start_position == 'mid_all':
+		ranges = np.arange(56, 430+1, 1)
+		#ranges = np.arange(56, 3250, 1)
+
+
 	while time < length:
 		if iteration%decimate == 0:
 			j = 0
 			print(f'Start of the {iteration}th time window. Starttime = {time*dt} s') 
 
-			# cross correlate all selected channel in time window
-			if start_position == 'mid':
-				ranges = np.arange(start-channel,start+channel+1,1)
-			elif start_position == 'early':
-				ranges = np.arange(start, start+channel+1, 1)
-			elif start_position == 'end':
-				ranges = np.arange(start, start-channel-1, -1)
-			elif start_position == 'mid_all':
-				ranges = np.arange(57, 430+1, 1)
 
 			for i_channel in ranges:
 			#for i in range(57,60): # use this when only interested in some channels
@@ -138,17 +118,24 @@ def cross_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,st
 					x2 = traces[time:time+int(window/dt),i_channel]
 				
 				if phase_cc == True:
+					# _t , pcc = pcc2(x1, x2, dt, -window, window)
+					# cc[:,j] = cc[:,j] + pcc
+						
+					# folder = f'Correlogram_{start}_{i_channel}_phase/'
+					# make_dir(traces, pcc, parent_dir, folder, stats, start, i_channel, time, window)
+
 					try:
 						_t , pcc = pcc2(x1, x2, dt, -window, window)
 						cc[:,j] = cc[:,j] + pcc
 						
 						folder = f'Correlogram_{start}_{i_channel}_phase/'
 						make_dir(traces, pcc, parent_dir, folder, stats, start, i_channel, time, window)
-							
+					
 					except:
 						# print(len(corr),len(cc[:,j])) # show length
 						print(f'Time window starting at {time*dt} s is shorter. Finishing the program ...')
 						break
+
 				else:
 					try: # to account for cutted trace in last time window
 						corr = signal.correlate(x1,x2)
@@ -186,21 +173,21 @@ def auto_correlate(cc,traces,parent_dir,window,lag,length,time,channel,start,sta
 	stats.station = 'STRMBL'
 	stats.location = 'Italy'
 
+	# cross correlate all selected channel in time window
+	if start_position == 'mid':
+		ranges = np.arange(start-channel,start+channel+1,1)
+	elif start_position == 'early':
+		ranges = np.arange(start, start+channel+1, 1)
+	elif start_position == 'end':
+		ranges = np.arange(start, start-channel-1, -1)
+	elif start_position == 'mid_all':
+		ranges = np.arange(56, 430+1, 1)
+		#ranges = np.arange(56, 3250, 1)
 
 	while time < length:
 		if iteration%decimate == 0:
 			j = 0
 			print(f'Start of the {iteration}th time window. Starttime = {time*dt} s') 
-
-			# cross correlate all selected channel in time window
-			if start_position == 'mid':
-				ranges = np.arange(start-channel,start+channel+1,1)
-			elif start_position == 'early':
-				ranges = np.arange(start, start+channel+1, 1)
-			elif start_position == 'end':
-				ranges = np.arange(start, start-channel-1, -1)
-			elif start_position == 'mid_all':
-				ranges = np.arange(57, 430+1, 1)
 
 			for i_channel in ranges:
 			#for i in range(57,60):
