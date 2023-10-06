@@ -2,13 +2,10 @@ import numpy as np
 from scipy import signal
 from tools_pcc import *
 import os
-from obspy import Stream,Trace,UTCDateTime
+from obspy import Trace
+# from obspy import Stream, UTCDateTime
 from obspy.core import Stats
-from obspy import read
-
-
-from xdas.io.febus import correct_gps_time
-from xdas.io.febus import read as read_das
+# from obspy import read
 
 
 
@@ -45,13 +42,15 @@ def make_date(traces):
 	# minute = str(date.minute).zfill(2)
 
 	date = traces['times'][0].values
-	year = str(np.datetime64(date, 'Y'))
-	month = str(np.datetime64(date, 'M'))
-	day = str(np.datetime64(date, 'D'))
-	hour = str(np.datetime64(date, 'h'))
-	minute = str(np.datetime64(date, 'm'))
+	# year = str(np.datetime64(date, 'Y'))
+	# month = str(np.datetime64(date, 'M'))
+	# day = str(np.datetime64(date, 'D'))
+	# hour = str(np.datetime64(date, 'h'))
+	minute = str(np.datetime64(date, 'm')) # returns (example) "2022-09-18T17:35"
+	
+	#fdate = f'{year}{month}{day}_{hour}{minute}'
+	fdate = minute.replace("-","").replace("T","_").replace(":","")
 
-	fdate = f'{year}{month}{day}_{hour}{minute}'
 	return fdate
 
 def make_dir(traces, pcc, parent_dir, folder, stats, start,i, time, window):
