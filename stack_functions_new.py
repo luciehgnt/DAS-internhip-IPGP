@@ -168,8 +168,9 @@ def auto_correlate(traces,parent_dir,window,lag,length,time,nb_channel,start_cha
 	if start_position == 'mid':
 		cc = np.zeros((2*int(window/dt),2*nb_channel+1))
 	elif start_position == 'mid_all':
-		cc = np.zeros((2*int(window/dt),430+1))
+		# cc = np.zeros((2*int(window/dt),430+1))
 		# cc = np.zeros((2*int(window/dt),3249+1))
+		cc = np.zeros((2*int(window/dt), 808-525+1+1))
 	else:
 		cc = np.zeros((2*int(window/dt),nb_channel+1))
 
@@ -181,8 +182,9 @@ def auto_correlate(traces,parent_dir,window,lag,length,time,nb_channel,start_cha
 	elif start_position == 'end':
 		ranges = np.arange(start_channel, start_channel-nb_channel-1, -1)
 	elif start_position == 'mid_all':
-		ranges = np.arange(56, 430+1, 1)
+		#ranges = np.arange(56, 430+1, 1)
 		#ranges = np.arange(56, 3250, 1)
+		ranges = np.arange(525, 808+1, 1)
 
 	# looping auto correlation over varying time window
 	iteration = 1
